@@ -2,6 +2,8 @@
 
 import torch as th
 import timeit
+import datetime
+import time
 import os
 
 
@@ -61,6 +63,12 @@ class ConditionalDiscriminator(Network):
 class GAN:
     """
     Unconditional GAN
+
+    args:
+        gen: Generator object
+        dis: Discriminator object
+        device: torch.device() for running on GPU or CPU
+                default = torch.device("cpu")
     """
 
     def __init__(self, gen, dis,
@@ -175,7 +183,10 @@ class GAN:
         fixed_input = th.randn(num_samples,
                                self.generator.latent_size, 1, 1).to(self.device)
 
-        for epoch in range(start, num_epochs):
+        # create a global time counter
+        global_time = time.time()
+
+        for epoch in range(start, num_epochs + 1):
             start = timeit.default_timer()  # record time at the start of epoch
 
             print("\nEpoch: %d" % epoch)
@@ -192,7 +203,6 @@ class GAN:
                                      self.generator.latent_size, 1, 1).to(self.device)
 
                 # optimize the discriminator:
-                gen_optim.zero_grad()
                 dis_loss = self.optimize_discriminator(dis_optim, gan_input,
                                                        images, loss_fn)
 
@@ -200,13 +210,15 @@ class GAN:
                 # resample from the latent noise
                 gan_input = th.randn(images.shape[0],
                                      self.generator.latent_size, 1, 1).to(self.device)
-                dis_optim.zero_grad()
                 gen_loss = self.optimize_generator(gen_optim, gan_input,
                                                    images, loss_fn)
 
                 # provide a loss feedback
                 if i % int(limit / feedback_factor) == 0 or i == 1:
-                    print("batch: %d  d_loss: %f  g_loss: %f" % (i, dis_loss, gen_loss))
+                    elapsed = time.time() - global_time
+                    elapsed = str(datetime.timedelta(seconds=elapsed))
+                    print("Elapsed [%s] batch: %d  d_loss: %f  g_loss: %f"
+                          % (elapsed, i, dis_loss, gen_loss))
 
                     # also write the losses to the log file:
                     if log_dir is not None:
@@ -229,7 +241,7 @@ class GAN:
             stop = timeit.default_timer()
             print("Time taken for epoch: %.3f secs" % (stop - start))
 
-            if epoch % checkpoint_factor == 0 or epoch == 1:
+            if epoch % checkpoint_factor == 0 or epoch == 1 or epoch == num_epochs:
                 os.makedirs(save_dir, exist_ok=True)
                 gen_save_file = os.path.join(save_dir, "GAN_GEN_" + str(epoch) + ".pth")
                 dis_save_file = os.path.join(save_dir, "GAN_DIS_" + str(epoch) + ".pth")

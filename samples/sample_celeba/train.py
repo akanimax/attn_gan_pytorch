@@ -120,7 +120,8 @@ def main(args):
         num_epochs=args.num_epochs,
         checkpoint_factor=args.checkpoint_factor,
         data_percentage=args.data_percentage,
-        feedback_factor=30
+        feedback_factor=31,
+        num_samples=64
     )
 
 
