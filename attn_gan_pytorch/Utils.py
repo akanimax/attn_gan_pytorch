@@ -38,7 +38,7 @@ def get_layer(layer):
     :return: lay => PyTorch layer
     """
     from attn_gan_pytorch.CustomLayers import SelfAttention, \
-        SpectralNorm, IgnoreAttentionMap
+        SpectralNorm, IgnoreAttentionMap, FullAttention
     from torch.nn import Sequential, Conv2d, Dropout2d, ConvTranspose2d, BatchNorm2d
     from attn_gan_pytorch.ConfigManagement import parse2tuple
 
@@ -131,23 +131,38 @@ def get_layer(layer):
         mod_layer = IgnoreAttentionMap()
 
     elif name == "self_attention":
-        in_channels, out_channels = parse2tuple(layer.channels)
-        kernel_size = parse2tuple(layer.kernel_dims)
+        channels = layer.channels
         squeeze_factor = layer.squeeze_factor
-        stride = parse2tuple(layer.stride)
-        padding = parse2tuple(layer.padding)
         bias = layer.bias
 
         if hasattr(layer, "activation"):
             act_fn = get_act_fn(layer.activation)
-            mod_layer = SelfAttention(in_channels, out_channels, act_fn,
-                                      kernel_size, squeeze_factor, stride,
-                                      padding, bias)
+            mod_layer = SelfAttention(channels, act_fn, squeeze_factor, bias)
         else:
-            mod_layer = SelfAttention(in_channels, out_channels, None,
-                                      kernel_size, squeeze_factor, stride,
-                                      padding, bias)
+            mod_layer = SelfAttention(channels, None, squeeze_factor, bias)
 
+    elif name == "full_attention":
+        in_channels, out_channels = parse2tuple(layer.channels)
+        kernel_size = parse2tuple(layer.kernel_dims)
+        squeeze_factor = layer.squeeze_factor
+        stride = parse2tuple(layer.stride)
+        use_batch_norm = layer.use_batch_norm
+        use_spectral_norm = layer.use_spectral_norm
+        padding = parse2tuple(layer.padding)
+        transpose_conv = layer.transpose_conv
+        bias = layer.bias
+
+        if hasattr(layer, "activation"):
+            act_fn = get_act_fn(layer.activation)
+            mod_layer = FullAttention(in_channels, out_channels, act_fn,
+                                      kernel_size, transpose_conv,
+                                      use_spectral_norm, use_batch_norm,
+                                      squeeze_factor, stride, padding, bias)
+        else:
+            mod_layer = FullAttention(in_channels, out_channels, None,
+                                      kernel_size, transpose_conv,
+                                      use_spectral_norm, use_batch_norm,
+                                      squeeze_factor, stride, padding, bias)
     else:
         raise ValueError("unknown layer type requested")
 

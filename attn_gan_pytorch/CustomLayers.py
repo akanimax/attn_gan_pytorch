@@ -9,19 +9,13 @@ class SelfAttention(th.nn.Module):
     which is the main logic behind this architecture.
 
     args:
-        in_channels: number of input channels
-        out_channels: number of output channels
+        channels: number of channels in the image tensor
         activation: activation function to be applied (default: lrelu(0.2))
-        kernel_size: kernel size for convolution (default: (1 x 1))
         squeeze_factor: squeeze factor for query and keys (default: 8)
-        stride: stride for the convolutions (default: 1)
-        padding: padding for the applied convolutions (default: 1)
         bias: whether to apply bias or not (default: True)
     """
 
-    def __init__(self, in_channels, out_channels,
-                 activation=None, kernel_size=(1, 1),
-                 squeeze_factor=8, stride=1, padding=0, bias=True):
+    def __init__(self, channels, activation=None, squeeze_factor=8, bias=True):
         """ constructor for the layer """
 
         from torch.nn import Conv2d, Parameter, Softmax
@@ -35,29 +29,29 @@ class SelfAttention(th.nn.Module):
 
         # Modules required for computations
         self.query_conv = Conv2d(  # query convolution
-            in_channels=in_channels,
-            out_channels=in_channels // squeeze_factor,
-            kernel_size=kernel_size,
-            stride=stride,
-            padding=padding,
+            in_channels=channels,
+            out_channels=channels // squeeze_factor,
+            kernel_size=(1, 1),
+            stride=1,
+            padding=0,
             bias=bias
         )
 
         self.key_conv = Conv2d(
-            in_channels=in_channels,
-            out_channels=in_channels // squeeze_factor,
-            kernel_size=kernel_size,
-            stride=stride,
-            padding=padding,
+            in_channels=channels,
+            out_channels=channels // squeeze_factor,
+            kernel_size=(1, 1),
+            stride=1,
+            padding=0,
             bias=bias
         )
 
         self.value_conv = Conv2d(
-            in_channels=in_channels,
-            out_channels=out_channels,
-            kernel_size=kernel_size,
-            stride=stride,
-            padding=padding,
+            in_channels=channels,
+            out_channels=channels,
+            kernel_size=(1, 1),
+            stride=1,
+            padding=0,
             bias=bias
         )
 
@@ -102,6 +96,194 @@ class SelfAttention(th.nn.Module):
             out = self.activation(out)
 
         out = self.gamma * out + x
+        return out, attention
+
+
+class FullAttention(th.nn.Module):
+    """
+    Layer implements my version of the self-attention module
+    it is mostly same as self attention, but generalizes to
+    (k x k) convolutions instead of (1 x 1)
+    args:
+        in_channels: number of input channels
+        out_channels: number of output channels
+        activation: activation function to be applied (default: lrelu(0.2))
+        kernel_size: kernel size for convolution (default: (1 x 1))
+        transpose_conv: boolean denoting whether to use convolutions or transpose
+                        convolutions
+        squeeze_factor: squeeze factor for query and keys (default: 8)
+        stride: stride for the convolutions (default: 1)
+        padding: padding for the applied convolutions (default: 1)
+        bias: whether to apply bias or not (default: True)
+    """
+
+    def __init__(self, in_channels, out_channels,
+                 activation=None, kernel_size=(1, 1), transpose_conv=False,
+                 use_spectral_norm=True, use_batch_norm=True,
+                 squeeze_factor=8, stride=1, padding=0, bias=True):
+        """ constructor for the layer """
+
+        from torch.nn import Conv2d, Parameter, \
+            Softmax, ConvTranspose2d, BatchNorm2d
+
+        # base constructor call
+        super().__init__()
+
+        # state of the layer
+        self.activation = activation
+        self.gamma = Parameter(th.zeros(1))
+
+        self.in_channels = in_channels
+        self.out_channels = out_channels
+        self.squeezed_channels = in_channels // squeeze_factor
+        self.use_batch_norm = use_batch_norm
+
+        # Modules required for computations
+        if transpose_conv:
+            self.query_conv = ConvTranspose2d(  # query convolution
+                in_channels=in_channels,
+                out_channels=in_channels // squeeze_factor,
+                kernel_size=kernel_size,
+                stride=stride,
+                padding=padding,
+                bias=bias
+            )
+
+            self.key_conv = ConvTranspose2d(
+                in_channels=in_channels,
+                out_channels=in_channels // squeeze_factor,
+                kernel_size=kernel_size,
+                stride=stride,
+                padding=padding,
+                bias=bias
+            )
+
+            self.value_conv = ConvTranspose2d(
+                in_channels=in_channels,
+                out_channels=out_channels,
+                kernel_size=kernel_size,
+                stride=stride,
+                padding=padding,
+                bias=bias
+            )
+
+            self.residual_conv = ConvTranspose2d(
+                in_channels=in_channels,
+                out_channels=out_channels,
+                kernel_size=kernel_size,
+                stride=stride,
+                padding=padding,
+                bias=bias
+            ) if not use_spectral_norm else SpectralNorm(
+                ConvTranspose2d(
+                    in_channels=in_channels,
+                    out_channels=out_channels,
+                    kernel_size=kernel_size,
+                    stride=stride,
+                    padding=padding,
+                    bias=bias
+                )
+            )
+
+        else:
+            self.query_conv = Conv2d(  # query convolution
+                in_channels=in_channels,
+                out_channels=in_channels // squeeze_factor,
+                kernel_size=kernel_size,
+                stride=stride,
+                padding=padding,
+                bias=bias
+            )
+
+            self.key_conv = Conv2d(
+                in_channels=in_channels,
+                out_channels=in_channels // squeeze_factor,
+                kernel_size=kernel_size,
+                stride=stride,
+                padding=padding,
+                bias=bias
+            )
+
+            self.value_conv = Conv2d(
+                in_channels=in_channels,
+                out_channels=out_channels,
+                kernel_size=kernel_size,
+                stride=stride,
+                padding=padding,
+                bias=bias
+            )
+
+            self.residual_conv = Conv2d(
+                in_channels=in_channels,
+                out_channels=out_channels,
+                kernel_size=kernel_size,
+                stride=stride,
+                padding=padding,
+                bias=bias
+            ) if not use_spectral_norm else SpectralNorm(
+                Conv2d(
+                    in_channels=in_channels,
+                    out_channels=out_channels,
+                    kernel_size=kernel_size,
+                    stride=stride,
+                    padding=padding,
+                    bias=bias
+                )
+            )
+
+        # softmax module for applying attention
+        self.softmax = Softmax(dim=-1)
+        self.batch_norm = BatchNorm2d(out_channels)
+
+    def forward(self, x):
+        """
+        forward computations of the layer
+        :param x: input feature maps (B x C x H x W)
+        :return:
+            out: self attention value + input feature (B x O x H x W)
+            attention: attention map (B x C x H x W)
+        """
+
+        # extract the batch size of the input tensor
+        m_batchsize, _, _, _ = x.size()
+
+        # create the query projection
+        proj_query = self.query_conv(x).view(
+            m_batchsize, self.squeezed_channels, -1).permute(0, 2, 1)  # B x (N) x C
+
+        # create the key projection
+        proj_key = self.key_conv(x).view(
+            m_batchsize, self.squeezed_channels, -1)  # B x C x (N)
+
+        # calculate the attention maps
+        energy = th.bmm(proj_query, proj_key)  # energy
+        attention = self.softmax(energy)  # attention (B x (N) x (N))
+
+        # create the value projection
+        proj_value = self.value_conv(x).view(
+            m_batchsize, self.out_channels, -1)  # B X C X N
+
+        # calculate the output
+        out = th.bmm(proj_value, attention.permute(0, 2, 1))
+
+        # calculate the residual output
+        res_out = self.residual_conv(x)
+
+        out = out.view(m_batchsize, self.out_channels,
+                       res_out.shape[-2], res_out.shape[-1])
+
+        attention = attention.view(m_batchsize, -1,
+                                   res_out.shape[-2], res_out.shape[-1])
+
+        if self.use_batch_norm:
+            res_out = self.batch_norm(res_out)
+
+        if self.activation is not None:
+            out = self.activation(out)
+            res_out = self.activation(res_out)
+
+        # apply the residual connections
+        out = (self.gamma * out) + ((1 - self.gamma) * res_out)
         return out, attention
 
 

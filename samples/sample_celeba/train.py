@@ -19,11 +19,11 @@ def parse_arguments():
     """
     parser = argparse.ArgumentParser()
     parser.add_argument("--generator_config", action="store", type=str,
-                        default="configs/1/gen.conf",
+                        default="configs/3/gen.conf",
                         help="default configuration for generator network")
 
     parser.add_argument("--discriminator_config", action="store", type=str,
-                        default="configs/1/dis.conf",
+                        default="configs/3/dis.conf",
                         help="default configuration for discriminator network")
 
     parser.add_argument("--images_dir", action="store", type=str,
@@ -39,7 +39,7 @@ def parse_arguments():
                         help="batch_size for training")
 
     parser.add_argument("--num_epochs", action="store", type=int,
-                        default=3,
+                        default=1,
                         help="number of epochs for training")
 
     parser.add_argument("--checkpoint_factor", action="store", type=int,
