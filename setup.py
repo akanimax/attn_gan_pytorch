@@ -2,8 +2,8 @@ from setuptools import setup, find_packages
 
 setup(
     name='attn_gan_pytorch',
-    version='0.3',
-    packages=find_packages(exclude=("samples/", "literature")),
+    version='0.3.3',
+    packages=find_packages(exclude=("samples", "literature")),
     url='https://github.com/akanimax/attn_gan_pytorch',
     license='MIT',
     author='animesh karnewar',

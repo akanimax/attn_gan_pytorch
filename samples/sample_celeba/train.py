@@ -39,7 +39,7 @@ def parse_arguments():
                         help="batch_size for training")
 
     parser.add_argument("--num_epochs", action="store", type=int,
-                        default=1,
+                        default=3,
                         help="number of epochs for training")
 
     parser.add_argument("--checkpoint_factor", action="store", type=int,
@@ -78,7 +78,7 @@ def main(args):
     from attn_gan_pytorch.Networks import Generator, Discriminator, GAN
     from data_processing.DataLoader import FlatDirectoryImageDataset, \
         get_transform, get_data_loader
-    from attn_gan_pytorch.Losses import HingeGAN
+    from attn_gan_pytorch.Losses import RelativisticAverageHingeGAN
 
     # create a data source:
     celeba_dataset = FlatDirectoryImageDataset(args.images_dir,
@@ -116,12 +116,15 @@ def main(args):
         data,
         gen_optim,
         dis_optim,
-        loss_fn=HingeGAN(device, discriminator),
+        loss_fn=RelativisticAverageHingeGAN(device, discriminator),
         num_epochs=args.num_epochs,
         checkpoint_factor=args.checkpoint_factor,
         data_percentage=args.data_percentage,
         feedback_factor=31,
-        num_samples=64
+        num_samples=64,
+        save_dir="models/relativistic/",
+        sample_dir="samples/4/",
+        log_dir="models/relativistic"
     )
 
 
