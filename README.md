@@ -24,7 +24,9 @@ Install with following commands:
 ## Celeba Samples:
 some celeba samples generated using this code for the 
 fagan architecture:
+<p align="center">
 <img alt="generated samples" src="https://github.com/akanimax/fagan/blob/master/samples/video_gif/relativistic.gif"/>
+</p>
 
 ### Head over to the [**Fagan project**](https://github.com/akanimax/fagan) repo for more info!
 Also, this repo contains the code for using this package 
